@@ -1,6 +1,0 @@
-#surefire_0
-#Fri Dec 13 13:55:19 ART 2024
-maven.ext.class.path=/usr/lib/apache-netbeans/java/maven-nblib/netbeans-eventspy.jar
-user.dir=/home/mgiannini/NetBeansProjects/omnited/backend/omnited-ws-server
-localRepository=/home/mgiannini/.m2/repository
-basedir=/home/mgiannini/NetBeansProjects/omnited/backend/omnited-ws-server
