@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import coop.bancocredicoop.omnited.service.RedisService;
 import coop.bancocredicoop.omnited.service.WebSocketService;
 import java.io.IOException;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -49,7 +50,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     session.sendMessage(new TextMessage("ping;" + pong));
                     break;
                 case "usuariologinWS":
-
                     // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
                     redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
 
@@ -63,8 +63,31 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
                     // Continuo procesando el mensaje del cliente
                     webSocketToRabbit.processMessage(message.getPayload());
-                    break;
+                    JsonNode jsonPayloadNode = jsonNode.get("jsonPayload");
+
+                    if (jsonPayloadNode.isTextual()) {
+                        jsonPayloadNode = objectMapper.readTree(jsonPayloadNode.asText());
+                    }
+
+                    // Accedemos al array "sectores" dentro de "sectoresDatos"
+                    JsonNode sectoresArray = jsonPayloadNode.get("sectoresDatos").get("sectores");
+
+                    // Recorremos el array y extraemos cada "idSector"
+                    for (JsonNode sector : sectoresArray) {
+                        // Verificamos que el campo "idSector" existe y es numérico
+                        if (sector.has("idSector") && sector.get("idSector").isInt()) {
+                            redisService.addSessionToSectors(sector.get("idSector").asInt(), session.getId());
+                            redisService.addIdSectorToSession(sector.get("idSector").asInt(), session.getId());
+                        }
+                    }
                     
+                    Set<Object> ses = redisService.getSessionsBySector(1);
+                    
+                    ses.forEach(sessiona -> 
+                            System.out.println("Session ID: " + sessiona)
+                    );
+
+                    break;
                 case "usuariologingruposWS":
                     // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
                     redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
@@ -72,9 +95,58 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     // Continuo procesando el mensaje del cliente
                     webSocketToRabbit.processMessage(message.getPayload());
                     break;
+                case "usuarioHabilidadesWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
 
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
+                case "usuarioEstadosWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
+                case "permisosSupervisionWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
+                case "permisosOperacionWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
+                case "modificaColaWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
+                case "grupoHabilidadesWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
+                case "grupoEstadosWS":
+                    // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
+                    redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+
+                    // Continuo procesando el mensaje del cliente
+                    webSocketToRabbit.processMessage(message.getPayload());
+                    break;
                 default:
-                    LOGGER.log(Level.INFO, "Received message from {0}: {1}", new Object[]{session.getId(), message.getPayload()});
+                    System.out.println("Llegó algo desconocido: ");
+                    LOGGER.log(Level.INFO, "Esto:", new Object[]{session.getId(), message.getPayload()});
                     break;
             }
         } catch (IOException e) {
@@ -83,8 +155,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, org.springframework.web.socket.CloseStatus status) throws Exception {
-        LOGGER.log(Level.INFO, "Connection closed: {0}", session.getId());
+    public void afterConnectionClosed(WebSocketSession webSocketSession, org.springframework.web.socket.CloseStatus status) throws Exception {
+        System.out.println("Se cierra la conexion: "+webSocketSession.getId());
+        
+        Set<Object> sectoresIds = redisService.getSectoresBySession(webSocketSession.getId());
+        
+        redisService.removeSessionFromSectors(webSocketSession.getId(), sectoresIds);
+        
+        LOGGER.log(Level.INFO, "Connection closed: {0}", webSocketSession.getId());
     }
 
     @Override
