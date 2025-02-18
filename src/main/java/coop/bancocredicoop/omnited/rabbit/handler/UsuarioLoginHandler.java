@@ -1,29 +1,38 @@
 package coop.bancocredicoop.omnited.rabbit.handler;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import coop.bancocredicoop.omnited.rabbit.RabbitMessageHandler;
 import coop.bancocredicoop.omnited.service.RedisService;
+import coop.bancocredicoop.omnited.service.WebSocketService;
+import java.io.IOException;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
 
 public class UsuarioLoginHandler implements RabbitMessageHandler {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final RedisService redisService;
+    private final WebSocketService webSocketService;
 
-    public UsuarioLoginHandler(RedisService redisService) {
+    public UsuarioLoginHandler(RedisService redisService,
+            WebSocketService connectionManager) {
         this.redisService = redisService;
+        this.webSocketService = connectionManager;
     }
 
     @Override
-    public void handle(String jsonPayload, String idMensaje) throws Exception {
+    public void handle(String idMensaje, String type, String jsonPayload) throws Exception {
+
+        String wbSessionID = redisService.getWebSocketSessionByMessageID(idMensaje);
+
+        WebSocketSession session = webSocketService.getSession(wbSessionID);
         
-        // Parsear el JSON raíz
-        JsonNode rootNode = objectMapper.readTree(jsonPayload);
-        // Acceder al nodo "UsuarioDatos"
-        
-        System.out.println("El mnsaje que vuelve es:");
-        System.out.println("----------------------");
-        System.out.println(""+jsonPayload);
-        
+        if (session != null && session.isOpen()) {
+            try {
+                session.sendMessage(new TextMessage(type + ";" + jsonPayload));
+            } catch (IOException e) {
+                System.err.println("Error al enviar mensaje al cliente: " + e.getMessage());
+            }
+        } else {
+            System.err.println("La sesión no está disponible o está cerrada para el cliente con ID: " + idMensaje);
+        }
     }
 }

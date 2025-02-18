@@ -12,18 +12,20 @@ public class WebSocketToRabbit {
     private final ObjectMapper objectMapper;
     private final RabbitSenderService rabbitSenderService;
 
-    public WebSocketToRabbit(ObjectMapper objectMapper, RabbitSenderService rabbitSenderService) {
+    public WebSocketToRabbit(
+            ObjectMapper objectMapper,
+            RabbitSenderService rabbitSenderService) {
         this.objectMapper = objectMapper;
         this.rabbitSenderService = rabbitSenderService;
     }
 
     public void processMessage(String rawMessage) {
-        
+
         try {
             // Parsear el mensaje JSON recibido
             JsonNode jsonNode = objectMapper.readTree(rawMessage);
             String id = jsonNode.get("id").asText();
-            
+
             String type = jsonNode.get("type").asText();
             String jsonPayload = objectMapper.writeValueAsString(jsonNode.get("jsonPayload"));
 

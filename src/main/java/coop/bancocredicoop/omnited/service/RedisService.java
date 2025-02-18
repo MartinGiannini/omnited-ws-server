@@ -77,7 +77,8 @@ public class RedisService {
      * @param webSocketSessionId
      */
     public void addIdSectorToSession(Integer idSector, String webSocketSessionId) {
-        redisTemplate.opsForSet().add(webSocketSessionId, idSector);
+        String key = "websocket:" + webSocketSessionId;
+        redisTemplate.opsForSet().add(key, idSector);
     }
 
     /**
@@ -87,7 +88,8 @@ public class RedisService {
      * @return 
      */
     public Set<Object> getSectoresBySession(String webSocketSessionId) {
-        return redisTemplate.opsForSet().members(webSocketSessionId);
+        String key = "websocket:" + webSocketSessionId;
+        return redisTemplate.opsForSet().members(key);
     }
 
     /**
@@ -105,4 +107,13 @@ public class RedisService {
         redisTemplate.delete(sessionId);
     }
     
+    /**
+     * Elimina la KEY del WebSocketID que mapea los sectoresIds
+     * 
+     * @param webSocketSessionId 
+     */
+    public void removeSectoresFromSession(String webSocketSessionId) {
+        String key = "websocket:" + webSocketSessionId;
+        redisTemplate.delete(key);
+    }
 }
