@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import coop.bancocredicoop.omnited.service.RedisService;
 import coop.bancocredicoop.omnited.service.WebSocketService;
 import java.io.IOException;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -50,51 +49,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
             } else {
 
                 // Guardo el hash en Redis: MENSAJEID - WEBSOCKETID
-                redisService.mapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
+                redisService.temporalMapMessageIDToWebSocketSession(jsonNode.get("id").asText(), session.getId());
                 switch (type) {
                     case "usuariologinWS":
                         // Continuo procesando el mensaje del cliente
                         webSocketToRabbit.processMessage(message.getPayload());
                         break;
-
-                    case "usuariologinsectoresWS":
-                        // Continuo procesando el mensaje del cliente
-                        webSocketToRabbit.processMessage(message.getPayload());
-                        JsonNode jsonPayloadNode = jsonNode.get("jsonPayload");
-
-                        if (jsonPayloadNode.isTextual()) {
-                            jsonPayloadNode = objectMapper.readTree(jsonPayloadNode.asText());
-                        }
-
-                        // Accedemos al array "sectores" dentro de "sectoresDatos"
-                        JsonNode sectoresArray = jsonPayloadNode.get("ingresoDatos").get("sectores");
-
-                        // Recorremos el array y extraemos cada "idSector"
-                        for (JsonNode sector : sectoresArray) {
-                            // Verificamos que el campo "idSector" existe y es numérico
-                            if (sector.has("idSector") && sector.get("idSector").isInt()) {
-                                // Almaceno en los sectores del usuario el websocketSession del Usuario
-                                redisService.addSessionToSectors(sector.get("idSector").asInt(), session.getId());
-                                // Almaceno en la session del usuario todos los sectores del mismo.
-                                // De esta forma sé en que sectores eliminar el WSID cuando el usuario se desconecte.
-                                redisService.addIdSectorToSession(sector.get("idSector").asInt(), session.getId());
-                            }
-                        }
-
-                        Set<Object> ses = redisService.getSessionsBySector(1);
-
-                        ses.forEach(sessiona
-                                -> System.out.println("Session ID: " + sessiona)
-                        );
-
-                        Set<Object> sectores = redisService.getSectoresBySession(session.getId());
-
-                        sectores.forEach(aaa
-                                -> System.out.println("Sectores del websocket: " + aaa)
-                        );
-
-                        break;
-                    case "usuariologingruposWS":
+                    case "usuarioadminWS":
                         // Continuo procesando el mensaje del cliente
                         webSocketToRabbit.processMessage(message.getPayload());
                         break;
@@ -114,7 +75,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                         // Continuo procesando el mensaje del cliente
                         webSocketToRabbit.processMessage(message.getPayload());
                         break;
-                    case "modificaColaWS":
+                    case "colaadminWS":
                         // Continuo procesando el mensaje del cliente
                         webSocketToRabbit.processMessage(message.getPayload());
                         break;
@@ -142,7 +103,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession webSocketSession, org.springframework.web.socket.CloseStatus status) throws Exception {
         System.out.println("Se cierra la conexion: " + webSocketSession.getId());
 
-        Set<Object> sectoresIds = redisService.getSectoresBySession(webSocketSession.getId());
+        //Set<Object> sectoresIds = redisService.getSectoresBySession(webSocketSession.getId());
 
         //redisService.removeSessionFromSectors(webSocketSession.getId(), sectoresIds);
         //redisService.removeSectoresFromSession(webSocketSession.getId());

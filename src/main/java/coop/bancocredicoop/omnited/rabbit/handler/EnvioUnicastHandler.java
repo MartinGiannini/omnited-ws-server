@@ -7,24 +7,25 @@ import java.io.IOException;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-public class UsuarioLoginHandler implements RabbitMessageHandler {
+public class EnvioUnicastHandler implements RabbitMessageHandler {
 
     private final RedisService redisService;
     private final WebSocketService webSocketService;
 
-    public UsuarioLoginHandler(RedisService redisService,
-            WebSocketService connectionManager) {
+    public EnvioUnicastHandler(
+            RedisService redisService,
+            WebSocketService connectionManager
+    ) {
         this.redisService = redisService;
         this.webSocketService = connectionManager;
     }
 
     @Override
-    public void handle(String idMensaje, String type, String jsonPayload) throws Exception {
+    public void handle(String idMensaje, String type, String jsonPayload, Integer idUsuario) throws Exception {
 
-        String wbSessionID = redisService.getWebSocketSessionByMessageID(idMensaje);
-
+        String wbSessionID = redisService.usuariosGetWebSocketSessionByIdUsuario(idUsuario);
         WebSocketSession session = webSocketService.getSession(wbSessionID);
-        
+
         if (session != null && session.isOpen()) {
             try {
                 session.sendMessage(new TextMessage(type + ";" + jsonPayload));

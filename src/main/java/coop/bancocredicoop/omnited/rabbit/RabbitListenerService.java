@@ -1,23 +1,20 @@
 package coop.bancocredicoop.omnited.rabbit;
 
 import coop.bancocredicoop.omnited.config.MessageOut.MensajeJSON;
-import coop.bancocredicoop.omnited.rabbit.handler.UsuarioLoginHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.EnvioBroadcastHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.EnvioUnicastHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.EnvioTemporalHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.UsuarioSessionHandler;
 import coop.bancocredicoop.omnited.service.RedisService;
 import coop.bancocredicoop.omnited.service.WebSocketService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
-import org.springframework.web.socket.WebSocketSession;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
-import org.springframework.web.socket.TextMessage;
 
 @Service
 public class RabbitListenerService {
 
-    private final WebSocketService webSocketService;
-    private final RedisService redisService;
     private final Map<String, RabbitMessageHandler> handlers = new HashMap<>();
 
     // Constructor con inyección de dependencia
@@ -25,14 +22,38 @@ public class RabbitListenerService {
             WebSocketService webSocketService,
             RedisService redisService
     ) {
-        handlers.put("usuariologinDB", new UsuarioLoginHandler(redisService, webSocketService));
-        handlers.put("usuariologinpermisosDB", new UsuarioLoginHandler(redisService, webSocketService));
-        handlers.put("usuariologinsectoresDB", new UsuarioLoginHandler(redisService, webSocketService));
-        handlers.put("usuariologingruposDB", new UsuarioLoginHandler(redisService, webSocketService));
-        handlers.put("usuariologinestrategiasDB", new UsuarioLoginHandler(redisService, webSocketService));
-        handlers.put("cambiosRealizadosDB", new UsuarioLoginHandler(redisService, webSocketService));
-        this.webSocketService = webSocketService;
-        this.redisService = redisService;
+        // Handlers para Login
+        handlers.put("usuariologinDB", new EnvioTemporalHandler(redisService, webSocketService));
+        handlers.put("usuariologinsectoresDB", new EnvioTemporalHandler(redisService, webSocketService));
+        handlers.put("usuariologinpermisosDB", new EnvioTemporalHandler(redisService, webSocketService));
+        handlers.put("usuariologingruposDB", new EnvioTemporalHandler(redisService, webSocketService));
+        handlers.put("usuariologinestrategiasDB", new EnvioTemporalHandler(redisService, webSocketService));
+        handlers.put("usuariosessionDB", new UsuarioSessionHandler(redisService));
+                
+        // Handlers para Modificacion Broadcast
+        handlers.put("usuarioHabilidadesSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("usuarioEstadosSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("usuarioPermisosOperacionSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("usuarioPermisosSupervisionSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("grupoHabilidadesAgregaDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("grupoHabilidadesModificaDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("grupoEstadosAgregaDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("grupoEstadosModificaDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        
+        handlers.put("colaActualizarDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("colaAgregarDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        
+        handlers.put("usuarioActualizarDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("usuarioAgregarDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        
+        // Handlers para Modificacion Unicast
+        handlers.put("usuarioHabilidadesUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
+        handlers.put("usuarioEstadosUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
+        handlers.put("usuarioPermisosOperacionUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
+        handlers.put("usuarioPermisosSupervisionUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
+        
+        // Handler para confirmacion de Modificacion
+        handlers.put("cambiosRealizadosDB", new EnvioTemporalHandler(redisService, webSocketService));
     }
 
     @RabbitListener(queues = {
@@ -47,38 +68,22 @@ public class RabbitListenerService {
             String idMensaje = message.getIdMensaje();
             String mensajeType = message.getMensajeType();
             String mensajeJson = message.getMensajeJson();
-            int idSector = message.getIdSector();
-
+            Integer idSector = message.getIdSector();
+            
+            
             /**
-             * Pueden llegar 3 tipos de mensajes: 1) Mensajes de respuesta al
-             * request del cliente 2) Mensajes que parten del núcleo del sistema
-             * para 1 cliente. 3) Mensajes Broadcast que parten del núcleo del
-             * sistema para n clientes.
+             * Pueden llegar 3 tipos de mensajes: 
+             * 1) Mensajes de respuesta al request del cliente 
+             * 2) Mensajes que parten del núcleo del sistema para 1 cliente. 
+             * 3) Mensajes Broadcast que parten del núcleo del sistema para n clientes.
              */
             RabbitMessageHandler handler = handlers.get(mensajeType);
 
             if (handler != null) {
-                handler.handle(idMensaje, mensajeType, mensajeJson);
+                handler.handle(idMensaje, mensajeType, mensajeJson, idSector);
             } else {
-                
-                System.out.println("El tipo de mensaje que estoy enviadno es: "+mensajeType);
 
-                Set<Object> webSocketSessionIds = redisService.getSessionsBySector(idSector);
-
-                webSocketSessionIds.forEach(wssId -> {
-
-                    WebSocketSession session = webSocketService.getSession(wssId.toString());
-                    if (session != null && session.isOpen()) {
-                        try {
-                            session.sendMessage(new TextMessage(mensajeType + ";" + mensajeJson));
-                        } catch (IOException e) {
-                            System.err.println("Error al enviar mensaje al cliente: " + e.getMessage());
-                        }
-                    } else {
-                        System.err.println("La sesión no está disponible o está cerrada para el cliente con ID: " + idMensaje);
-                    }
-
-                });
+                System.out.println("El handler vino NULL!!! WTF??");
 
             }
 

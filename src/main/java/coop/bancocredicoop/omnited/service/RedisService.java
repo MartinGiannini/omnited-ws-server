@@ -14,22 +14,58 @@ public class RedisService {
         this.redisTemplate = redisTemplate;
     }
 
-    // Guardar la relación entre messageID y websocketSessionID
-    public void mapMessageIDToWebSocketSession(String messageID, String webSocketSessionID) {
+    /**
+     * INICIA TEMPORALES
+     */
+    
+    /**
+     *
+     * Guarda la relación entre messageID y websocketSessionID. Este método se
+     * usa solo para el LOGIN de usuario.
+     *
+     * Ejemplo de guardado:
+     *
+     * message: b7856c9c-9986-4360-aad4-95a33b598a43 =>
+     * 6db454f7-b007-f108-46c6-115dcf760512, 1 minutos UUID WSID TIEMPO DE VIDA
+     *
+     * @param messageID
+     * @param webSocketSessionID
+     */
+    public void temporalMapMessageIDToWebSocketSession(String messageID, String webSocketSessionID) {
         redisTemplate.opsForValue().set("message:" + messageID, webSocketSessionID, Duration.ofMinutes(1));
     }
 
-    // Obtener el websocketSessionID asociado a un messageID
-    public String getWebSocketSessionByMessageID(String messageID) {
+    /**
+     * Obtiene el websocketSessionID asociado a un messageID
+     *
+     * @param messageID
+     * @return
+     */
+    public String temporalGetWebSocketSessionByMessageID(String messageID) {
         return (String) redisTemplate.opsForValue().get("message:" + messageID);
     }
-
-    // Eliminar la relación entre un messageID y su websocketSessionID
-    public void removeMessageID(String messageID) {
+    
+    /**
+     * Elimina la relación entre un messageID y su websocketSessionID Los
+     * mensajes temporales se borran en n minutos. Sin embargo dejo el método
+     * para borrarlo manualmente.
+     *
+     * @param messageID
+     */
+    public void temporalRemoveMessageID(String messageID) {
         redisTemplate.delete("message:" + messageID);
     }
+    
+    /**
+     * FIN TEMPORALES
+     */
 
-    // Eliminar todas las relaciones de un websocketSessionID (si es necesario en el futuro)
+    /**
+     * Elimina todas las relaciones de un websocketSessionID (si es necesario en
+     * el futuro)
+     *
+     * @param webSocketSessionID
+     */
     public void deleteWebSocketSession(String webSocketSessionID) {
         // Buscar todas las claves relacionadas con este websocketSessionID (opcional)
         Set<String> keys = redisTemplate.keys("message:*");
@@ -49,11 +85,31 @@ public class RedisService {
      * @param webSocketSessionId
      * @param idSector
      */
-    public void addSessionToSectors(Integer idSector, String webSocketSessionId) {
-        String key = "sector:" + idSector;
-        redisTemplate.opsForSet().add(key, webSocketSessionId);
+    public void addSessionToSectors(String webSocketSessionId, Integer idPerfil, Set<Integer> idSectores) {
+        switch (idPerfil) {
+            case 1:
+                idSectores.forEach(idSector -> {
+                    String key = "sector:" + idSector;
+                    redisTemplate.opsForSet().add(key, webSocketSessionId);
+                });
+                break;
+            case 2:
+                idSectores.forEach(idSector -> {
+                    String key = "sector:" + idSector;
+                    redisTemplate.opsForSet().add(key, webSocketSessionId);
+                });
+                break;
+            case 3:
+                // Es operador, no se guarda.
+                break;
+            default:
+                System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+                System.out.println("Que fucking llego????? " + idPerfil);
+                System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@");
+                break;
+        }
     }
-    
+
     /**
      * Obtiene todos los websocketSessionIDs asociados a un idSector.
      *
@@ -64,15 +120,14 @@ public class RedisService {
         String key = "sector:" + sectorId;
         return redisTemplate.opsForSet().members(key);
     }
-    
+
     /**
-     * Asocia todos los idSector al websocketSessionId.
-     * Esto lo hago para que cuando se cierra el Websocket se busque todos los
-     * idSector asociados y asi eliminar por IdSector el websocketSessionId
-     * 
-     * Ejemplo de o que guarda:
-     * 43047ed1-a2d3-2602-93ef-12f7bfebfa21 -> [1,2,3]
-     * 
+     * Asocia todos los idSector al websocketSessionId. Esto lo hago para que
+     * cuando se cierra el Websocket se busque todos los idSector asociados y
+     * asi eliminar por IdSector el websocketSessionId
+     *
+     * Ejemplo de o que guarda: 43047ed1-a2d3-2602-93ef-12f7bfebfa21 -> [1,2,3]
+     *
      * @param idSector
      * @param webSocketSessionId
      */
@@ -83,9 +138,9 @@ public class RedisService {
 
     /**
      * Obtengo todos los sectores asociados al webSocketSessionId
-     * 
+     *
      * @param webSocketSessionId
-     * @return 
+     * @return
      */
     public Set<Object> getSectoresBySession(String webSocketSessionId) {
         String key = "websocket:" + webSocketSessionId;
@@ -93,8 +148,8 @@ public class RedisService {
     }
 
     /**
-     * Elimina el websocketSessionID del Set asociado a cada idSector.
-     * Al final elimino el WebSocket de la DB Redis
+     * Elimina el websocketSessionID del Set asociado a cada idSector. Al final
+     * elimino el WebSocket de la DB Redis
      *
      * @param sessionId
      * @param sectorIds
@@ -106,14 +161,26 @@ public class RedisService {
         }
         redisTemplate.delete(sessionId);
     }
-    
+
     /**
      * Elimina la KEY del WebSocketID que mapea los sectoresIds
-     * 
-     * @param webSocketSessionId 
+     *
+     * @param webSocketSessionId
      */
     public void removeSectoresFromSession(String webSocketSessionId) {
         String key = "websocket:" + webSocketSessionId;
         redisTemplate.delete(key);
+    }
+    
+    public void usuariosMapUsuarioIDToWebSocketSession(Integer idUsuario, String webSocketSessionID) {
+        redisTemplate.opsForValue().set("usuario:" + idUsuario, webSocketSessionID, Duration.ofMinutes(1));
+    }
+    
+    public String usuariosGetWebSocketSessionByIdUsuario(Integer idUsuario) {
+        return (String) redisTemplate.opsForValue().get("usuario:" + idUsuario);
+    }
+
+    public void usuariosRemoveIdUsuario(Integer idUsuario) {
+        redisTemplate.delete("usuario:" + idUsuario);
     }
 }
