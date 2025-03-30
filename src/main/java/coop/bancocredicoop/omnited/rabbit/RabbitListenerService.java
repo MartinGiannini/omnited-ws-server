@@ -1,7 +1,7 @@
 package coop.bancocredicoop.omnited.rabbit;
 
 import coop.bancocredicoop.omnited.config.MessageOut.MensajeJSON;
-import coop.bancocredicoop.omnited.rabbit.handler.EnvioBroadcastHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.EnvioMulticastHandler;
 import coop.bancocredicoop.omnited.rabbit.handler.EnvioUnicastHandler;
 import coop.bancocredicoop.omnited.rabbit.handler.EnvioTemporalHandler;
 import coop.bancocredicoop.omnited.rabbit.handler.UsuarioSessionHandler;
@@ -28,23 +28,27 @@ public class RabbitListenerService {
         handlers.put("usuariologinpermisosDB", new EnvioTemporalHandler(redisService, webSocketService));
         handlers.put("usuariologingruposDB", new EnvioTemporalHandler(redisService, webSocketService));
         handlers.put("usuariologinestrategiasDB", new EnvioTemporalHandler(redisService, webSocketService));
+        
         handlers.put("usuariosessionDB", new UsuarioSessionHandler(redisService));
                 
         // Handlers para Modificacion Broadcast
-        handlers.put("usuarioHabilidadesSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("usuarioEstadosSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("usuarioPermisosOperacionSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("usuarioPermisosSupervisionSectorDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("grupoHabilidadesAgregaDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("grupoHabilidadesModificaDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("grupoEstadosAgregaDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("grupoEstadosModificaDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("usuarioHabilidadesSectorDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("usuarioEstadosSectorDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("usuarioPermisosOperacionSectorDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("usuarioPermisosSupervisionSectorDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("grupoHabilidadesAgregaDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("grupoHabilidadesModificaDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("grupoEstadosAgregaDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("grupoEstadosModificaDB", new EnvioMulticastHandler(redisService, webSocketService));
         
-        handlers.put("colaActualizarDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("colaAgregarDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("colaActualizarDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("colaAgregarDB", new EnvioMulticastHandler(redisService, webSocketService));
         
-        handlers.put("usuarioActualizarDB", new EnvioBroadcastHandler(redisService, webSocketService));
-        handlers.put("usuarioAgregarDB", new EnvioBroadcastHandler(redisService, webSocketService));
+        handlers.put("usuarioActualizarDB", new EnvioMulticastHandler(redisService, webSocketService));
+        handlers.put("usuarioAgregarDB", new EnvioMulticastHandler(redisService, webSocketService));
+        
+        // ************************************** VER!!!!!
+        handlers.put("operadorRealTimeLIST", new EnvioMulticastHandler(redisService, webSocketService));
         
         // Handlers para Modificacion Unicast
         handlers.put("usuarioHabilidadesUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
@@ -57,8 +61,9 @@ public class RabbitListenerService {
     }
 
     @RabbitListener(queues = {
-        "#{@environment.getProperty('spring.rabbitmq.colaDB')}",
-        "#{@environment.getProperty('spring.rabbitmq.colaCR')}"
+        "#{@environment.getProperty('spring.rabbitmq.colaDBU')}",
+        "#{@environment.getProperty('spring.rabbitmq.colaDBM')}",
+        "#{@environment.getProperty('spring.rabbitmq.colaLIST')}",
     })
 
     public void receiveMessage(MensajeJSON message) {
@@ -79,11 +84,17 @@ public class RabbitListenerService {
              */
             RabbitMessageHandler handler = handlers.get(mensajeType);
 
+            System.out.println("");
+            System.out.println("***************************************");
+            System.out.println("El mensaje que llega es: " + mensajeType);
+            System.out.println("***************************************");
+            System.out.println("");
+            
             if (handler != null) {
                 handler.handle(idMensaje, mensajeType, mensajeJson, idSector);
             } else {
 
-                System.out.println("El handler vino NULL!!! WTF??");
+                System.out.println("El handler vino NULL?? Handler = "+handler+" y el mensaje es: "+message.getIdMensaje());
 
             }
 

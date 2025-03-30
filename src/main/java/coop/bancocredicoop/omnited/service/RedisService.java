@@ -2,6 +2,7 @@ package coop.bancocredicoop.omnited.service;
 
 import java.time.Duration;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -10,14 +11,15 @@ public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
-    public RedisService(RedisTemplate<String, Object> redisTemplate) {
-        this.redisTemplate = redisTemplate;
+    public RedisService(
+            @Qualifier("redisTemplate") RedisTemplate<String, Object> redisTemplateString
+    ) {
+        this.redisTemplate = redisTemplateString;
     }
 
     /**
      * INICIA TEMPORALES
      */
-    
     /**
      *
      * Guarda la relación entre messageID y websocketSessionID. Este método se
@@ -32,7 +34,7 @@ public class RedisService {
      * @param webSocketSessionID
      */
     public void temporalMapMessageIDToWebSocketSession(String messageID, String webSocketSessionID) {
-        redisTemplate.opsForValue().set("message:" + messageID, webSocketSessionID, Duration.ofMinutes(1));
+        redisTemplate.opsForValue().set(messageID, webSocketSessionID, Duration.ofMinutes(1));
     }
 
     /**
@@ -42,9 +44,9 @@ public class RedisService {
      * @return
      */
     public String temporalGetWebSocketSessionByMessageID(String messageID) {
-        return (String) redisTemplate.opsForValue().get("message:" + messageID);
+        return (String) redisTemplate.opsForValue().get(messageID);
     }
-    
+
     /**
      * Elimina la relación entre un messageID y su websocketSessionID Los
      * mensajes temporales se borran en n minutos. Sin embargo dejo el método
@@ -53,50 +55,40 @@ public class RedisService {
      * @param messageID
      */
     public void temporalRemoveMessageID(String messageID) {
-        redisTemplate.delete("message:" + messageID);
+        redisTemplate.delete(messageID);
     }
-    
     /**
      * FIN TEMPORALES
      */
-
+    
     /**
-     * Elimina todas las relaciones de un websocketSessionID (si es necesario en
-     * el futuro)
+     * Asocia websocketSessionID y sectores de la siguiente forma:
      *
-     * @param webSocketSessionID
-     */
-    public void deleteWebSocketSession(String webSocketSessionID) {
-        // Buscar todas las claves relacionadas con este websocketSessionID (opcional)
-        Set<String> keys = redisTemplate.keys("message:*");
-        if (keys != null) {
-            for (String key : keys) {
-                String associatedSessionID = (String) redisTemplate.opsForValue().get(key);
-                if (webSocketSessionID.equals(associatedSessionID)) {
-                    redisTemplate.delete(key);
-                }
-            }
-        }
-    }
-
-    /**
-     * Asocia el websocketSessionID a cada uno de los idSector indicados.
+     * sector:1 -> websocket1, websocket2, websocket3;
+     * sector:2 -> websocket3, websocket4;
+     * 
+     * session:websocket1 -> idSector1;
+     * session:websocket3 -> idSector1, idSector2
+     * 
      *
      * @param webSocketSessionId
-     * @param idSector
+     * @param idPerfil
+     * @param idSectores
      */
-    public void addSessionToSectors(String webSocketSessionId, Integer idPerfil, Set<Integer> idSectores) {
+    public void addSessionAndSectors(String webSocketSessionId, Integer idPerfil, Set<Integer> idSectores) {
+        String key = "sector:";
+        String sessionKey = "session:" + webSocketSessionId;
         switch (idPerfil) {
             case 1:
                 idSectores.forEach(idSector -> {
-                    String key = "sector:" + idSector;
-                    redisTemplate.opsForSet().add(key, webSocketSessionId);
+                    redisTemplate.opsForSet().add(key + idSector, webSocketSessionId);
+                    redisTemplate.opsForSet().add(sessionKey, idSector);
                 });
                 break;
             case 2:
                 idSectores.forEach(idSector -> {
-                    String key = "sector:" + idSector;
-                    redisTemplate.opsForSet().add(key, webSocketSessionId);
+                    redisTemplate.opsForSet().add(key + idSector, webSocketSessionId);
+                    redisTemplate.opsForSet().add(sessionKey, idSector);
                 });
                 break;
             case 3:
@@ -113,12 +105,37 @@ public class RedisService {
     /**
      * Obtiene todos los websocketSessionIDs asociados a un idSector.
      *
-     * @param sectorId
+     * @param idSector
      * @return
      */
-    public Set<Object> getSessionsBySector(Integer sectorId) {
-        String key = "sector:" + sectorId;
-        return redisTemplate.opsForSet().members(key);
+    public Set<Object> getSessionsBySector(Integer idSector) {
+        String key = "sector:";
+        return redisTemplate.opsForSet().members(key + idSector);
+    }
+
+    /**
+     * Elimina un websocketid de un sector determinado.
+     *
+     * @param webSocketSessionId
+     * @param idSector
+     */
+    public void removeSessionFromSector(String webSocketSessionId, Integer idSector) {
+        String key = "sector:";
+        redisTemplate.opsForSet().remove(key + idSector, webSocketSessionId);
+    }
+
+    /**
+     * Eliminar un websocketid de todos los sectores que contengan el
+     * websocketid
+     *
+     * @param webSocketSessionId
+     * @param sectores
+     */
+    public void removeSessionFromSectors(String webSocketSessionId, Set<Object> sectores) {
+        sectores.forEach(sectorObj -> {
+            String sectorKey = "sector:" + sectorObj.toString();
+            redisTemplate.opsForSet().remove(sectorKey, webSocketSessionId);
+        });
     }
 
     /**
@@ -132,34 +149,20 @@ public class RedisService {
      * @param webSocketSessionId
      */
     public void addIdSectorToSession(Integer idSector, String webSocketSessionId) {
-        String key = "websocket:" + webSocketSessionId;
-        redisTemplate.opsForSet().add(key, idSector);
+        redisTemplate.opsForSet().add(webSocketSessionId, idSector);
     }
 
     /**
-     * Obtengo todos los sectores asociados al webSocketSessionId
+     * Obtengo todos los sectores asociados al webSocketSessionId Ejemplo:
+     *
+     * idSector1 -> websocket1, websocket2, websocket3 idSector2 -> websocket3,
+     * websocket4 Si busco el websocket3 me devolverá => idSector1, idSector2
      *
      * @param webSocketSessionId
      * @return
      */
     public Set<Object> getSectoresBySession(String webSocketSessionId) {
-        String key = "websocket:" + webSocketSessionId;
-        return redisTemplate.opsForSet().members(key);
-    }
-
-    /**
-     * Elimina el websocketSessionID del Set asociado a cada idSector. Al final
-     * elimino el WebSocket de la DB Redis
-     *
-     * @param sessionId
-     * @param sectorIds
-     */
-    public void removeSessionFromSectors(String sessionId, Set<Object> sectorIds) {
-        for (Object sectorId : sectorIds) {
-            String key = "sector:" + sectorId;
-            redisTemplate.opsForSet().remove(key, sessionId);
-        }
-        redisTemplate.delete(sessionId);
+        return redisTemplate.opsForSet().members("session:" + webSocketSessionId);
     }
 
     /**
@@ -168,14 +171,13 @@ public class RedisService {
      * @param webSocketSessionId
      */
     public void removeSectoresFromSession(String webSocketSessionId) {
-        String key = "websocket:" + webSocketSessionId;
-        redisTemplate.delete(key);
+        redisTemplate.delete(webSocketSessionId);
     }
-    
+
     public void usuariosMapUsuarioIDToWebSocketSession(Integer idUsuario, String webSocketSessionID) {
         redisTemplate.opsForValue().set("usuario:" + idUsuario, webSocketSessionID, Duration.ofMinutes(1));
     }
-    
+
     public String usuariosGetWebSocketSessionByIdUsuario(Integer idUsuario) {
         return (String) redisTemplate.opsForValue().get("usuario:" + idUsuario);
     }

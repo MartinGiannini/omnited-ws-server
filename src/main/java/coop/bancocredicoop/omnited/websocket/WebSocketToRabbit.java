@@ -5,9 +5,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import coop.bancocredicoop.omnited.rabbit.RabbitSenderService;
 import org.springframework.stereotype.Component;
+import java.util.logging.Logger;
 
 @Component
 public class WebSocketToRabbit {
+    
+    private static final Logger LOGGER = Logger.getLogger(WebSocketToRabbit.class.getName());
 
     private final ObjectMapper objectMapper;
     private final RabbitSenderService rabbitSenderService;
@@ -29,6 +32,9 @@ public class WebSocketToRabbit {
             String type = jsonNode.get("type").asText();
             String jsonPayload = objectMapper.writeValueAsString(jsonNode.get("jsonPayload"));
 
+            System.out.println("El type que llega es: "+type);
+            
+            
             // Enviar el mensaje a RabbitMQ
             rabbitSenderService.sendMessage(id, type, jsonPayload);
 

@@ -26,7 +26,7 @@ public class UsuarioSessionHandler implements RabbitMessageHandler {
         Integer idPerfil = sessionDatos.getIdPerfil();
         Set<Integer> idSectores = sessionDatos.getIdSectores();
         
-        redisService.addSessionToSectors(wbSessionID, idPerfil, idSectores);
+        redisService.addSessionAndSectors(wbSessionID, idPerfil, idSectores);
         redisService.usuariosMapUsuarioIDToWebSocketSession(idUsuario, wbSessionID);
     }
 }

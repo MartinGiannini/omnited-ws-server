@@ -18,12 +18,11 @@ public class RedisConfig {
     @Value("${spring.redis.port}")
     private int redisPort;
 
-    @Value("${spring.redis.password:}") // Si no hay contraseña, se deja vacío
+    @Value("${spring.redis.password:}")
     private String redisPassword;
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
-        // Crear una fábrica de conexiones usando Lettuce
         LettuceConnectionFactory connectionFactory = new LettuceConnectionFactory(redisHost, redisPort);
         if (!redisPassword.isEmpty()) {
             connectionFactory.setPassword(redisPassword);
@@ -31,7 +30,7 @@ public class RedisConfig {
         return connectionFactory;
     }
 
-    @Bean
+    @Bean(name = "redisTemplate")
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
