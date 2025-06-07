@@ -17,7 +17,7 @@
     <properties>
         <java.version>1.8</java.version>
     </properties>
-
+    
     <dependencies>
         
         <dependency>
@@ -103,11 +103,14 @@
             <artifactId>jjwt</artifactId>
             <version>0.9.1</version>
         </dependency>
+        
+        <!-- GOOGLE PROTOBUF-->
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
             <version>3.20.1</version> 
         </dependency>
+        <!-- FIN GOOGLE PROTOBUF -->
     </dependencies>
 
     <build>

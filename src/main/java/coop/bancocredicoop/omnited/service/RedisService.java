@@ -61,6 +61,10 @@ public class RedisService {
      * FIN TEMPORALES
      */
     
+    /***************************************************
+     * Metodos para el vinculo entre usuarios y sectores
+     */
+    
     /**
      * Asocia websocketSessionID y sectores de la siguiente forma:
      *
@@ -101,7 +105,7 @@ public class RedisService {
                 break;
         }
     }
-
+    
     /**
      * Obtiene todos los websocketSessionIDs asociados a un idSector.
      *
@@ -114,16 +118,18 @@ public class RedisService {
     }
 
     /**
-     * Elimina un websocketid de un sector determinado.
+     * Eliminar los sectores de un websocketid.
      *
      * @param webSocketSessionId
-     * @param idSector
+     * @param sectores
      */
-    public void removeSessionFromSector(String webSocketSessionId, Integer idSector) {
-        String key = "sector:";
-        redisTemplate.opsForSet().remove(key + idSector, webSocketSessionId);
+    public void removeSectoresFromSession(String webSocketSessionId, Set<Integer> sectores) {
+        String sessionKey = "session:" + webSocketSessionId;
+        sectores.forEach(idSector -> {
+            redisTemplate.opsForSet().remove(sessionKey, idSector);
+        });
     }
-
+    
     /**
      * Eliminar un websocketid de todos los sectores que contengan el
      * websocketid
@@ -131,9 +137,9 @@ public class RedisService {
      * @param webSocketSessionId
      * @param sectores
      */
-    public void removeSessionFromSectors(String webSocketSessionId, Set<Object> sectores) {
-        sectores.forEach(sectorObj -> {
-            String sectorKey = "sector:" + sectorObj.toString();
+    public void removeSessionFromSectors(String webSocketSessionId, Set<Integer> sectores) {
+        sectores.forEach(idSector -> {
+            String sectorKey = "sector:" + idSector.toString();
             redisTemplate.opsForSet().remove(sectorKey, webSocketSessionId);
         });
     }
@@ -173,16 +179,80 @@ public class RedisService {
     public void removeSectoresFromSession(String webSocketSessionId) {
         redisTemplate.delete(webSocketSessionId);
     }
-
+    
+    /**
+     * FIN Metodos para el vinculo entre usuarios y sectores
+     *******************************************************/
+    
+    /**
+     * Método para guardar el vinculo entre idUsuario y webSocketId
+     * 
+     * @param idUsuario
+     * @param webSocketSessionID 
+     */
     public void usuariosMapUsuarioIDToWebSocketSession(Integer idUsuario, String webSocketSessionID) {
         redisTemplate.opsForValue().set("usuario:" + idUsuario, webSocketSessionID, Duration.ofMinutes(1));
     }
 
+    /**
+     * 
+     * @param idUsuario
+     * @return 
+     */
     public String usuariosGetWebSocketSessionByIdUsuario(Integer idUsuario) {
         return (String) redisTemplate.opsForValue().get("usuario:" + idUsuario);
     }
 
+    /**
+     * 
+     * @param idUsuario 
+     */
     public void usuariosRemoveIdUsuario(Integer idUsuario) {
         redisTemplate.delete("usuario:" + idUsuario);
+    }
+    
+    /**
+     * @param webSocketSessionID
+     * @param usuarioUsuario
+     */
+    public void usuariosMapWebSocketSessionToUsuarioUsuario(String webSocketSessionID, String usuarioUsuario) {
+        System.out.println("Se guarda: websocketToUsuarioUsuario: " + webSocketSessionID + "-" + usuarioUsuario);
+        redisTemplate.opsForValue().set("websocketToUsuarioUsuario:" + webSocketSessionID, usuarioUsuario);
+    }
+    
+    /**
+     * 
+     * @param webSocketSessionID
+     * @param idUsuario 
+     */
+    public void usuariosMapWebSocketSessionToIdUsuario(String webSocketSessionID, Integer idUsuario) {
+        System.out.println("Se guarda: websocketToIdUsuario: " + webSocketSessionID + "-" + idUsuario);
+        redisTemplate.opsForValue().set("websocketToIdUsuario:" + webSocketSessionID, idUsuario);
+    }
+
+    /**
+     * 
+     * @param webSocketSessionID
+     * @return 
+     */
+    public String usuariosGetUsuarioUsuarioByWebSocketSession(String webSocketSessionID) {
+        return (String) redisTemplate.opsForValue().get("websocketToUsuarioUsuario:" + webSocketSessionID);
+    }
+    
+    /**
+     * 
+     * @param webSocketSessionID
+     * @return 
+     */
+    public Integer usuariosGetIdUsuarioByWebSocketSession(String webSocketSessionID) {
+        return (Integer) redisTemplate.opsForValue().get("websocketToIdUsuario:" + webSocketSessionID);
+    }
+
+    /**
+     * 
+     * @param webSocketSessionID 
+     */
+    public void usuarioRemoveWebSocketSession(String webSocketSessionID) {
+        redisTemplate.delete("websocket:" + webSocketSessionID);
     }
 }

@@ -4,7 +4,8 @@ import coop.bancocredicoop.omnited.config.MessageOut.MensajeJSON;
 import coop.bancocredicoop.omnited.rabbit.handler.EnvioMulticastHandler;
 import coop.bancocredicoop.omnited.rabbit.handler.EnvioUnicastHandler;
 import coop.bancocredicoop.omnited.rabbit.handler.EnvioTemporalHandler;
-import coop.bancocredicoop.omnited.rabbit.handler.UsuarioSessionHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.UsuarioSessionFinalizaHandler;
+import coop.bancocredicoop.omnited.rabbit.handler.UsuarioSessionIniciaHandler;
 import coop.bancocredicoop.omnited.service.RedisService;
 import coop.bancocredicoop.omnited.service.WebSocketService;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -28,8 +29,10 @@ public class RabbitListenerService {
         handlers.put("usuariologinpermisosDB", new EnvioTemporalHandler(redisService, webSocketService));
         handlers.put("usuariologingruposDB", new EnvioTemporalHandler(redisService, webSocketService));
         handlers.put("usuariologinestrategiasDB", new EnvioTemporalHandler(redisService, webSocketService));
+        handlers.put("usuariologinbotwhatsappDB", new EnvioTemporalHandler(redisService, webSocketService));
         
-        handlers.put("usuariosessionDB", new UsuarioSessionHandler(redisService));
+        handlers.put("usuariosessioniniciaDB", new UsuarioSessionIniciaHandler(redisService));
+        handlers.put("usuariosessionfinalizaDB", new UsuarioSessionFinalizaHandler(redisService));
                 
         // Handlers para Modificacion Broadcast
         handlers.put("usuarioHabilidadesSectorDB", new EnvioMulticastHandler(redisService, webSocketService));
@@ -56,14 +59,15 @@ public class RabbitListenerService {
         handlers.put("usuarioPermisosOperacionUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
         handlers.put("usuarioPermisosSupervisionUsuarioDB", new EnvioUnicastHandler(redisService, webSocketService));
         
+        handlers.put("operadorDataDB", new EnvioTemporalHandler(redisService, webSocketService));
+        
         // Handler para confirmacion de Modificacion
         handlers.put("cambiosRealizadosDB", new EnvioTemporalHandler(redisService, webSocketService));
     }
 
     @RabbitListener(queues = {
-        "#{@environment.getProperty('spring.rabbitmq.colaDBU')}",
-        "#{@environment.getProperty('spring.rabbitmq.colaDBM')}",
-        "#{@environment.getProperty('spring.rabbitmq.colaLIST')}",
+        "#{@environment.getProperty('spring.rabbitmq.colaDB_WS')}",
+        "#{@environment.getProperty('spring.rabbitmq.colaLST_WS')}"
     })
 
     public void receiveMessage(MensajeJSON message) {

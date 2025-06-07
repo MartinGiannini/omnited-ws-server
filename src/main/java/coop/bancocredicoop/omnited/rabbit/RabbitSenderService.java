@@ -8,8 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 @Service
 public class RabbitSenderService {
 
-    @Value("${spring.rabbitmq.routing-key}.ws")
-    private String routingKeyOut;
+    @Value("${spring.rabbitmq.routing-key}.ws_db")
+    private String routingKeyOutWS_DB;
 
     @Value("${spring.rabbitmq.exchange}")
     private String exchangeName;
@@ -19,22 +19,23 @@ public class RabbitSenderService {
     public RabbitSenderService(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
     }
-
+    
     /**
-     * Enviar un mensaje a RabbitMQ.
+     * Enviar un mensaje por RabbitMQ al servicio de DB.
      *
      * @param idMensaje
      * @param mensajeType
      * @param mensajeJson
      */
-    public void sendMessage(String idMensaje, String mensajeType, String mensajeJson) {
+    public void sendMessageToDB(String idMensaje, String mensajeType, String mensajeJson) {
         MensajeJSON.Builder messageBuilder = MensajeJSON.newBuilder()
                 .setIdMensaje(idMensaje)
                 .setMensajeType(mensajeType)
-                .setMensajeJson(mensajeJson);
+                .setMensajeJson(mensajeJson)
+                .setFechaEnvio(System.currentTimeMillis());
         
         MensajeJSON message = messageBuilder.build();
         
-        rabbitTemplate.convertAndSend(exchangeName, routingKeyOut, message);
+        rabbitTemplate.convertAndSend(exchangeName, routingKeyOutWS_DB, message);
     }
 }
